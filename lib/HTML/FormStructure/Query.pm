@@ -78,12 +78,50 @@ sub column_name {
 	return $self->column;
     }
 }
+
 sub store_error {
     my $self = shift;
     my $error = $self->error || [];
     push @{$error}, shift;
     $self->error($error);
 }
+
+sub add { shift->add_right(@_) }
+
+sub add_left {
+    my $self = shift;
+    my ($key,$val) = @_;
+    $self->_do_add($key,$val,1);
+}
+
+sub add_right {
+    my $self = shift;
+    my ($key,$val) = @_;
+    $self->_do_add($key,$val);
+}
+
+sub _do_add {
+    my $self = shift;
+    my ($key,$val,$left) = @_;
+    my $stored = defined $self->$key() ? $self->$key() : '';
+    if ($left) {
+	if (ref $stored) {
+	    push @{$self->$key()}, $val if ref $stored eq 'ARRAY';
+	}
+	else {
+	    $self->$key($stored . $self->$key());
+	}
+    }
+    else {
+	if (ref $stored) {
+	    unshift @{$self->$key()}, $val if ref $stored eq 'ARRAY';
+	}
+	else {
+	    $self->$key($stored . $val);
+	}
+    }
+}
+
 
 # ----------------------------------------------------------------------
 
@@ -157,22 +195,12 @@ sub _Textarea {
 sub gen_tag_val_label {
     my $self = shift;
     my $key  = shift;
-    my $label = $self->tag_val_label;
+    my $label = $self->tag_val_label ne '' ? $self->tag_val_label : {};
     return defined $label->{$key} ? $label->{$key} : $key;
 }
 
-# ----------------------------------------------------------------------
 
 1;
 
 __END__
 
-=head1 NAME
-
-  $Id: Query.pm,v 1.8 2003/10/11 22:14:09 toona Exp $
-
-=head1 DESCRIPTION
-
-=item
-
-=cut

@@ -34,17 +34,23 @@ sub validate {
 	    if (ref $meth eq 'CODE') {
 		my $reason = $query->name . '__fail__' .
 		    $meth->($self->r->param($query->name));
-		$query->store_error($reason) unless $meth->($self->r->param($query->name));
+		$query->store_error($reason) unless $meth->(
+		    $self->r->param($query->name),$self->r
+		);
 		next;
 	    }
 	    my $reason = $query->name . '_fail_' . $meth;
 	    my $pkg    = caller(0);
 	    if ($pkg->can($meth)) {
-		$query->store_error($reason) unless $pkg->$meth($self->r->param($query->name));
+		$query->store_error($reason) unless $pkg->$meth(
+		    $self->r->param($query->name),$self->r
+		);
 	    }
 	    elsif ($self->validator->can($meth)) {
 		$query->store_error($reason)
-		    unless $self->validator->$meth($self->r->param($query->name));
+		    unless $self->validator->$meth(
+			$self->r->param($query->name),$self->r
+		    );
 	    }
 	    else {
 		warn qq/can not locate method, $meth/;

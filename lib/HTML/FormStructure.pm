@@ -2,11 +2,10 @@ package HTML::FormStructure;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use HTML::FormStructure::Query;
 use HTML::FormStructure::Validation;
-use HTML::FormStructure::ClassDBI;
 
 use base qw(Class::Accessor);
 
@@ -78,7 +77,7 @@ sub _do_search {
     my $type = shift;
     my @ret;
     for my $query ($self->list_as_array) {
-	if ($type eq 'like') {
+	if (defined $type && $type eq 'like') {
 	    push @ret,$query if $query->$key() =~ /$val/;
 	}
 	else {
@@ -162,7 +161,6 @@ sub query_combine {
 
 __END__
 
-		     
 
 =head1 NAME
 
@@ -175,13 +173,13 @@ HTML::FormStructure - Accessor for HTML FORM definition
   $cgi    = CGI->new;
   $option = { form_accessors  => [qw(foo bar baz)], 
   	      query_accessors => [qw(foo bar baz)], };
-  
+
   $form = HTML::FormStructure->new(
       &arrayref_of_queries,
       $cgi_object,
       $option
   );
-  
+
   sub arrayref_of_queries {
       return [{
   	name   => 'user_name',
@@ -309,7 +307,7 @@ HTML::FormStructure - Accessor for HTML FORM definition
 
   # get the query stored value via query name.
   # it does not return nothing before $form->store_request called.
-  $query = $form->fetch('user_name');
+  $store = $form->param('user_name');
 
 =head2 store_request
 
@@ -327,7 +325,6 @@ HTML::FormStructure - Accessor for HTML FORM definition
   # combine all of consist query
   # each value is stored in r->param.
   $form->combine;
-
 
 =head2 validate
 
@@ -504,15 +501,20 @@ HTML::FormStructure - Accessor for HTML FORM definition
   # check query is selected(it's type is 'select').
   $query->is_selected;
 
-=head1 ClassDBI(tested)
+=head2 add (alias of add_right)
 
-=head2 fillin_resource
+  # right concat. push if it's arrayref.
+  $query->add(tag_attr => 'size ="10" '); # right
 
-  $hashref = $form->fillin_resource;
+=head2 add_right
 
-=head2 table_handler
+  # right concat. push if it's arrayref.
+  $query->add(tag_attr => 'size ="10" ');
 
-  $form->table_handler;
+=head2 add_left
+
+  # left concat. unshift if it's arrayref.
+  $query->add(tag_attr => 'size ="10" ');
 
 =head1 OPTION
 
