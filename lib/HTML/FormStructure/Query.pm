@@ -5,6 +5,15 @@ use base qw(Class::Accessor);
 
 __PACKAGE__->mk_accessors(&_my_accessors);
 
+sub _init {
+    my $opt = shift;
+    $opt->{query_accessors} = defined $opt->{query_accessors} ?
+	$opt->{query_accessors} : [];
+    __PACKAGE__->mk_accessors(
+	&_my_accessors,@{$opt->{query_accessors}}
+    );
+}
+
 sub _my_accessors {
     return qw(name type value checked selected
 	      more less be consist store column error
@@ -16,6 +25,8 @@ sub _my_accessors {
 sub new {
     my $class = shift;
     my $query = shift;
+    my $opt   = shift;
+    _init($opt);
     my $self =  bless { _query => $query }, $class;
     $self->$_($query->{$_}) for (keys %{$query});
     return $self;
@@ -79,7 +90,7 @@ sub store_error {
 sub tag {
     my $self = shift;
     my $tag  = shift || '';
-    if ($self->type =~ /text|password|file|hidden/i) {
+    if ($self->type =~ /^(?:text|password|file|hidden)$/i) {
 	$tag = $self->_Input;
     }
     elsif ($self->type =~ /radio|checkbox/i) {
@@ -100,7 +111,6 @@ sub _Input {
 	$self->name,$self->type,$self->value,$self->tag_attr,
 	$self->tag_right_in,
     );
-
 }
 
 sub _Select {
@@ -159,7 +169,7 @@ __END__
 
 =head1 NAME
 
-  $Id: Query.pm,v 1.5 2003/10/09 13:38:13 toona Exp $
+  $Id: Query.pm,v 1.8 2003/10/11 22:14:09 toona Exp $
 
 =head1 DESCRIPTION
 

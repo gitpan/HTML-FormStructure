@@ -35,11 +35,19 @@ sub validate {
 		my $reason = $query->name . '__fail__' .
 		    $meth->($self->r->param($query->name));
 		$query->store_error($reason) unless $meth->($self->r->param($query->name));
+		next;
+	    }
+	    my $reason = $query->name . '_fail_' . $meth;
+	    my $pkg    = caller(0);
+	    if ($pkg->can($meth)) {
+		$query->store_error($reason) unless $pkg->$meth($self->r->param($query->name));
+	    }
+	    elsif ($self->validator->can($meth)) {
+		$query->store_error($reason)
+		    unless $self->validator->$meth($self->r->param($query->name));
 	    }
 	    else {
-		my $reason = $query->name . '_fail_' . $meth;
-		my $pkg    = caller(0);
-		$query->store_error($reason) unless $pkg->$meth($self->r->param($query->name));
+		warn qq/can not locate method, $meth/;
 	    }
 	}
     }
@@ -61,12 +69,3 @@ sub error_messages {
 
 __END__
 
-=head1 NAME
-
-  $Id: Validation.pm,v 1.5 2003/10/09 11:16:41 toona Exp $
-
-=head1 DESCRIPTION
-
-=item
-
-=cut

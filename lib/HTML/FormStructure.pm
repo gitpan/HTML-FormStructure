@@ -2,34 +2,43 @@ package HTML::FormStructure;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use HTML::FormStructure::Query;
 use HTML::FormStructure::Validation;
 use HTML::FormStructure::ClassDBI;
 
 use base qw(Class::Accessor);
-__PACKAGE__->mk_accessors(&_my_accessors);
 
 sub _my_accessors {
-    qw(action method enctype r tables);
+    qw(action method enctype r validator);
+}
+
+sub _init {
+    my $opt = shift;
+    $opt->{form_accessors} = defined $opt->{form_accessors} ?
+	$opt->{form_accessors} : [];
+    __PACKAGE__->mk_accessors(
+	&_my_accessors,@{$opt->{form_accessors}}
+    );
 }
 
 sub new {
-    my($class, $form, $r) = @_;
+    my($class, $form, $r, $opt) = @_;
+    _init($opt);
     my @query;
     for my $query (@{$form}) {
 	if (ref $query->{consist} eq 'ARRAY') {
 	    my @tmp_query;
 	    for my $q (@{$query->{consist}}) {
-		my $tmp_q = HTML::FormStructure::Query->new($q);
+		my $tmp_q = HTML::FormStructure::Query->new($q,$opt);
 		push @tmp_query, $tmp_q;
 	    }
 	    $query->{consist} = \@tmp_query;
-	    push @query, HTML::FormStructure::Query->new($query);
+	    push @query, HTML::FormStructure::Query->new($query,$opt);
 	}
 	else {
-	    push @query, HTML::FormStructure::Query->new($query);
+	    push @query, HTML::FormStructure::Query->new($query,$opt);
 	}
     }
     my $self = bless { _form_data => \@query }, $class;
@@ -126,7 +135,7 @@ sub hashref {
 	if ($situation) {
 	    next unless defined $_->$situation();
 	}
-	$hashref->{$_->name} = $_->$val() if defined $_->$val;
+	$hashref->{$_->name} = $_->$val() if defined $_->$val();
     }
     return $hashref;
 }
@@ -153,61 +162,74 @@ sub query_combine {
 
 __END__
 
+		     
+
 =head1 NAME
 
-HTML::FormStructure - Holder and Accessor of HTML FORM definition
+HTML::FormStructure - Accessor for HTML FORM definition
 
 =head1 SYNOPSIS
 
   use HTML::FormStructure;
   use CGI;
-  $form = HTML::FormStructure->new([{
-      name   => 'user_name',
-      type   => 'text',
-      more   => 6,
-      less   => 255,
-      column => 1,
-  },{
-      name   => 'email',
-      type   => 'text',
-      more   => 1,
-      less   => 255,
-      be     => [qw(valid_email)],
-      column => 1,
-  },{
-      name    => 'sex',
-      type    => 'radio',
-      value   => [1,2],
-      checked => 1,
-      column  => 1,
-  },{
-      name    => 'birthday',
-      type    => 'text',
-      be      => [qw(valid_date)],
-      more    => 1,
-      less    => 255,
-      column  => 1,
-      consist => [{
-  	name => 'year',
-  	type => 'text',
-  	more => 1,
-  	less => 4,
-  	be   => [qw(is_only_number)],
+  $cgi    = CGI->new;
+  $option = { form_accessors  => [qw(foo bar baz)], 
+  	      query_accessors => [qw(foo bar baz)], };
+  
+  $form = HTML::FormStructure->new(
+      &arrayref_of_queries,
+      $cgi_object,
+      $option
+  );
+  
+  sub arrayref_of_queries {
+      return [{
+  	name   => 'user_name',
+  	type   => 'text',
+  	more   => 6,
+  	less   => 255,
+  	column => 1,
       },{
-  	name => 'month',
-  	type => 'text',
-  	more => 1,
-  	less => 2,
-  	be   => [qw(is_only_number)],
+  	name   => 'email',
+  	type   => 'text',
+  	more   => 1,
+  	less   => 255,
+  	be     => [qw(valid_email)],
+  	column => 1,
       },{
-  	name => 'day',
-  	type => 'text',
-  	more => 1,
-  	less => 2,
-  	be   => [qw(is_only_number)],
-      }],
-  }],CGI->new);
-
+  	name    => 'sex',
+  	type    => 'radio',
+  	value   => [1,2],
+  	checked => 1,
+  	column  => 1,
+      },{
+  	name    => 'birthday',
+  	type    => 'text',
+  	be      => [qw(valid_date)],
+  	more    => 1,
+  	less    => 255,
+  	column  => 1,
+  	consist => [{
+  	    name => 'year',
+  	    type => 'text',
+  	    more => 1,
+  	    less => 4,
+  	    be   => [qw(is_only_number)],
+  	},{
+  	    name => 'month',
+  	    type => 'text',
+  	    more => 1,
+  	    less => 2,
+  	    be   => [qw(is_only_number)],
+  	},{
+  	    name => 'day',
+  	    type => 'text',
+  	    more => 1,
+  	    less => 2,
+  	    be   => [qw(is_only_number)],
+  	}];
+      }];
+  }
 
 =head1 DESCRIPTION
 
@@ -216,7 +238,7 @@ HTML::FormStructure - Holder and Accessor of HTML FORM definition
   and storeing cgi(apache request)'s parameters.
   You can access this object in the perl souce code or templates.
 
-=head1 Form Method
+=head1 Form Accessor
 
 =head2 action
 
@@ -238,6 +260,14 @@ HTML::FormStructure - Holder and Accessor of HTML FORM definition
   # cgi/apache-req alias.
   $form->r->param('query_name');
   $form->r->param('query_name' => $value);
+
+=head2 validator
+
+  # validator object
+  $form->validator->method($form->r->param('foo'));
+  $form->validator(YourValidate::Clsss->new);
+
+=head1 Form Method
 
 =head2 list_as_array
 
@@ -309,7 +339,7 @@ HTML::FormStructure - Holder and Accessor of HTML FORM definition
   # return error message.
   @error = $form->error_messages;
 
-=head1 Query Method
+=head1 Query Accessor
 
 =head2 name
 
@@ -456,6 +486,14 @@ HTML::FormStructure - Holder and Accessor of HTML FORM definition
   $query->scratch;
   $query->scratch('foo/bar');
 
+=head1 Query Method
+
+=head2 tag
+
+  # generate query tag
+  $query->tag;
+  [% query.tag %]
+
 =head2 is_checked
 
   # check query is check(it's type is 'radio/checkbox').
@@ -466,12 +504,6 @@ HTML::FormStructure - Holder and Accessor of HTML FORM definition
   # check query is selected(it's type is 'select').
   $query->is_selected;
 
-=head2 tag
-
-  # generate query tag
-  $query->tag;
-  [% query.tag %]
-
 =head1 ClassDBI(tested)
 
 =head2 fillin_resource
@@ -481,6 +513,16 @@ HTML::FormStructure - Holder and Accessor of HTML FORM definition
 =head2 table_handler
 
   $form->table_handler;
+
+=head1 OPTION
+
+=head2 form_accessors
+
+  # additional accessor in the Form Class.
+
+=head2 query_accessors
+
+  # additional accessor in the Query Class.
 
 =head1 AUTHOR
 
