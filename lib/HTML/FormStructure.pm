@@ -2,7 +2,7 @@ package HTML::FormStructure;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 use HTML::FormStructure::Query;
 use HTML::FormStructure::Validation;
@@ -119,7 +119,15 @@ sub param {
 sub store_request {
     my $self = shift;
     for my $query ($self->list_as_array) {
-	$query->store($self->r->param($query->name));
+	if (defined $query->storef) {
+	    $query->store(
+		sprintf $query->storef,
+		$self->r->param($query->name)
+	    );
+	}
+	else {
+	    $query->store($self->r->param($query->name));
+	}
 	for my $q ($query->array_of('consist')) {
 	    $q->store($self->r->param($q->name));
 	}
@@ -139,24 +147,26 @@ sub hashref {
     return $hashref;
 }
 
-sub query_combine {
+sub query_combine { shift->consist_query }
+
+sub consist_query {
     my $self = shift;
     for my $query ($self->have('consist')) {
-	my $pkg  = caller(0);
-	my $meth = sprintf "consist_%s", $query->name;
-	if ($pkg->can($meth)) {
-	    my $value = $pkg->$meth($query);
-	    $self->r->param($query->name => $value) if defined $value;
+	my $value;
+	if (defined $query->consistf) {
+	    $value = sprintf $query->consistf,
+		map $self->r->param($_->name),$query->array_of('consist');
 	}
 	else {
-	    my $value;
 	    for my $q ($query->array_of('consist')) {
-		$value .= $self->r->param($q->name);
+		$value .= defined $self->r->param($q->name) ?
+		    $self->r->param($q->name) : '';
 	    }
-	    $self->r->param($query->name => $value) if defined $value;
 	}
+	$self->r->param($query->name => $value) if defined $value;
     }
 }
+
 1;
 
 __END__
@@ -315,16 +325,16 @@ HTML::FormStructure - Accessor for HTML FORM definition
   $form->store_request;
   $user_name = $form->param('user_name');
 
+=head2 consist_query
+
+  # combine all of consist query
+  # each value is stored in r->param.
+  $form->consist_query
+
 =head2 hashref
 
   # return the key , value of form object.
   $hashref = $form->hashref(name => 'store');
-
-=head2 query_combine
-
-  # combine all of consist query
-  # each value is stored in r->param.
-  $form->combine;
 
 =head2 validate
 
@@ -408,18 +418,22 @@ HTML::FormStructure - Accessor for HTML FORM definition
 		$value .= $self->r->param($q->name);
 	    }
 
-  # exists current package 'consist_query_name'
-  sub consist_birthday {
-      my $query = shift;
-      return sprintf "%s-%s-%s",($query->array_of('consist'));
-  }
-  # See "sub query_combine".
+=head2 consistf
+
+  # format of cosisted
+  # consist_* have more priority than this accessor
+  $query->consistf("%s-%s-%s");
 
 =head2 store
 
   # query store cgi/apache-req's param
   $query->store;
   $query->store($cgi->param($query->name));
+
+=head2 storef
+
+  # query stored format
+  $query->storef("%D");
 
 =head2 column
 

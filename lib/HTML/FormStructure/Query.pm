@@ -16,7 +16,8 @@ sub _init {
 
 sub _my_accessors {
     return qw(name type value checked selected
-	      more less be consist store column error
+	      more less be consist consistf store storef
+	      column error
 	      tag_label tag_attr tag_desc
 	      tag_val_label tag_left_in tag_right_in
 	      scratch);

@@ -47,6 +47,7 @@ use CGI;
 	$q->add(tag_attr => 'size = "10" ');
 	$form->$_('hoge') for qw(foo bar baz);
     }
+    $form->consist_query;
     $form->store_request;
     push @err, qq/fail : param/
 	unless $form->param('user_name') eq 'toona';
@@ -54,6 +55,7 @@ use CGI;
 	unless $form->fetch('user_name')->store eq 'toona';
     $form->validate;
     $form->$_() for qw(foo bar baz);
+    warn $form->fetch('birthday')->store;
     die $_ for @err;
 }
 
@@ -108,7 +110,8 @@ sub resource {
 	be      => [qw(valid_date)],
 	more    => 1,
 	less    => 255,
-	column => 1,
+	column  => 1,
+	consistf => '%04d-%02d-%02d',
 	consist => [{
 	    name => 'year',
 	    type => 'text',
