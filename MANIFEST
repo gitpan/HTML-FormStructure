@@ -1,0 +1,8 @@
+Changes
+MANIFEST			This list of files
+Makefile.PL
+lib/HTML/FormStructure.pm
+lib/HTML/FormStructure/Query.pm
+lib/HTML/FormStructure/Validation.pm
+lib/HTML/FormStructure/ClassDBI.pm
+t/00_compile.t
